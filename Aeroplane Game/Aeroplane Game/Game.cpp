@@ -16,7 +16,7 @@
 /// load and setup thne image
 /// </summary>
 Game::Game() :
-	m_window{ sf::VideoMode{ 800U, 600U, 32U }, "SFML Game" },
+	m_window{ sf::VideoMode{ windowWidth, windowHeight, 32U }, "SFML Game" },
 	m_exitGame{false} //when true game will exit
 {
 	setupFontAndText(); // load font 
@@ -76,6 +76,14 @@ void Game::processEvents()
 		{
 			processKeys(newEvent);
 		}
+		if (sf::Event::MouseButtonPressed == newEvent.type)
+		{
+			processMousePress(newEvent);
+		}
+		if (sf::Event::MouseButtonReleased == newEvent.type)
+		{
+			processMouseRelease(newEvent);
+		}
 	}
 }
 
@@ -92,6 +100,65 @@ void Game::processKeys(sf::Event t_event)
 	}
 }
 
+void Game::processMousePress(sf::Event t_event)
+{
+	m_firstClick.x = t_event.mouseButton.x;
+	m_firstClick.y = t_event.mouseButton.y;
+}
+
+void Game::processMouseRelease(sf::Event t_event)
+{
+	m_secondClick.x = t_event.mouseButton.x;
+	m_secondClick.y = t_event.mouseButton.y;
+	sf::Vector2f velocity = m_secondClick - m_firstClick;
+	float headingRadians = std::atan2(velocity.y, velocity.x);
+	float headingDegree = 180.0f * headingRadians / static_cast<float>(M_PI);
+	headingDegree += 90.0f;
+
+	if (sf::Mouse::Left == t_event.mouseButton.button)
+	{
+		m_bigPlaneVelocity = velocity / 100.0f;
+		m_bigPlaneHeading = headingDegree;
+		m_bigPlane.setRotation(headingDegree);
+	}
+	if (sf::Mouse::Right == t_event.mouseButton.button)
+	{
+		m_smallPlaneVelocity = velocity / 50.0f;
+		m_smallPlaneHeading = headingDegree;
+		m_smallPlane.setRotation(headingDegree);
+	}
+}
+
+void Game::move()
+{
+	m_bigPlaneLocation += m_bigPlaneVelocity;
+	m_bigPlane.setPosition(m_bigPlaneLocation);
+	m_smallPlaneLocation += m_smallPlaneVelocity;
+	m_smallPlane.setPosition(m_smallPlaneLocation);
+}
+
+void Game::keepOnScreen(sf::Vector2f& t_location)
+{
+	float screenWidth = static_cast<float>(windowWidth); 
+	float screenHeight = static_cast<float>(windowHeight);
+	if (t_location.x < 0.0f)
+	{
+		t_location.x = 0.0f;
+	}
+	if (t_location.x > screenWidth)
+	{
+		t_location.x = screenWidth;
+	}
+	if (t_location.y < 0.0f)
+	{
+		t_location.y = 0.0f;
+	}
+	if (t_location.y > screenHeight)
+	{
+		t_location.y = screenHeight;
+	}
+}
+
 /// <summary>
 /// Update the game world
 /// </summary>
@@ -102,6 +169,9 @@ void Game::update(sf::Time t_deltaTime)
 	{
 		m_window.close();
 	}
+	move();
+	keepOnScreen(m_bigPlaneLocation);
+	keepOnScreen(m_smallPlaneLocation);
 }
 
 /// <summary>
@@ -110,8 +180,10 @@ void Game::update(sf::Time t_deltaTime)
 void Game::render()
 {
 	m_window.clear(sf::Color::White);
+	m_window.draw(m_sky);
 	m_window.draw(m_welcomeMessage);
-	m_window.draw(m_logoSprite);
+	m_window.draw(m_bigPlane);
+	m_window.draw(m_smallPlane);
 	m_window.display();
 }
 
@@ -140,11 +212,39 @@ void Game::setupFontAndText()
 /// </summary>
 void Game::setupSprite()
 {
-	if (!m_logoTexture.loadFromFile("ASSETS\\IMAGES\\SFML-LOGO.png"))
+	sf::IntRect bigPlaneRect{ 3, 11, 104, 93 };
+	sf::IntRect smallPlaneRect{ 362,115,87,69 };
+
+	if (!m_bigPlaneTexture.loadFromFile("ASSETS\\IMAGES\\planes.png"))
 	{
 		// simple error message if previous call fails
 		std::cout << "problem loading logo" << std::endl;
 	}
-	m_logoSprite.setTexture(m_logoTexture);
-	m_logoSprite.setPosition(300.0f, 180.0f);
+	m_bigPlane.setTexture(m_bigPlaneTexture);
+	m_bigPlane.setOrigin(bigPlaneRect.width / 2.0f, bigPlaneRect.height / 2.0f);
+	m_bigPlane.setPosition(300.0f, 180.0f);
+	m_bigPlane.setTextureRect(bigPlaneRect);
+
+
+	if (!m_smallPlaneTexture.loadFromFile("ASSETS\\IMAGES\\planes.png"))
+	{
+		// simple error message if previous call fails
+		std::cout << "problem loading logo" << std::endl;
+	}
+	m_smallPlane.setTexture(m_smallPlaneTexture);
+	m_smallPlane.setOrigin(smallPlaneRect.width / 2.0f, smallPlaneRect.height / 2.0f);
+	m_smallPlane.setPosition(400.0f, 180.0f);
+	m_smallPlane.setTextureRect(smallPlaneRect);
+
+	if (!m_skyTexture.loadFromFile("ASSETS\\IMAGES\\sky.jpg"))
+	{
+		// simple error message if previous call fails
+		std::cout << "problem loading logo" << std::endl;
+	}
+	m_sky.setTexture(m_skyTexture);
+	m_sky.setPosition(0.0f, 0.0f);
+	m_sky.setTextureRect(sf::IntRect(0, 0, windowWidth, windowHeight));
+	m_skyTexture.setRepeated(true);
+
 }
+
